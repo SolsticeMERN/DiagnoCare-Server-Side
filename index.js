@@ -32,6 +32,7 @@ async function run() {
     // await client.connect();
     // Send a ping to confirm a successful connection
     const bannerCollection = client.db("DiagnoCare").collection("banner");
+    const testsCollection = client.db("DiagnoCare").collection("tests");
 
 
 
@@ -39,6 +40,12 @@ async function run() {
     // banner api from db
     app.get('/banner', async(req, res) => {
       const result = await bannerCollection.find({}).toArray()
+      res.send(result)
+    })
+
+    // tests api from db
+    app.get('/tests', async(req, res) => {
+      const result = await testsCollection.find({}).toArray()
       res.send(result)
     })
 
