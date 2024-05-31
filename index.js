@@ -2,7 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const app = express()
 const cors = require('cors')
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port = process.env.PORT || 3000;
 
 // middleware
@@ -33,6 +33,7 @@ async function run() {
     // Send a ping to confirm a successful connection
     const bannerCollection = client.db("DiagnoCare").collection("banner");
     const testsCollection = client.db("DiagnoCare").collection("tests");
+    const featuresCollection = client.db("DiagnoCare").collection("features");
 
 
 
@@ -46,6 +47,23 @@ async function run() {
     // tests api from db
     app.get('/tests', async(req, res) => {
       const result = await testsCollection.find({}).toArray()
+      res.send(result)
+    })
+
+    // features api from db
+    app.get('/featured-tests', async(req, res) => {
+      const tests= await testsCollection.find({}).toArray()
+      tests.sort((a, b) => b.bookings - a.bookings)
+      const featuredTests=tests.slice(0,3)
+      res.send(featuredTests)
+    })
+
+
+    // viewDetails api from db
+    app.get('/testDetails/:id', async(req, res) => {
+      const id = req.params.id
+      const query = {_id: new ObjectId(id)}
+      const result = await testsCollection.findOne(query)
       res.send(result)
     })
 
