@@ -33,9 +33,22 @@ async function run() {
     // Send a ping to confirm a successful connection
     const bannerCollection = client.db("DiagnoCare").collection("banner");
     const testsCollection = client.db("DiagnoCare").collection("tests");
-    const featuresCollection = client.db("DiagnoCare").collection("features");
+    const recommendCollection = client.db("DiagnoCare").collection("recommend");
+    const usersCollection = client.db("DiagnoCare").collection("users");
 
 
+    // users api
+    app.post('/users', async(req, res) => {
+      const user = req.body
+      console.log(user);
+      const query = {email: user?.email}
+      const userExists = await usersCollection.findOne(query);
+      if (userExists) {
+        return res.send({ message: "User already exists" });
+      }
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
+    })
 
 
     // banner api from db
@@ -56,6 +69,12 @@ async function run() {
       tests.sort((a, b) => b.bookings - a.bookings)
       const featuredTests=tests.slice(0,3)
       res.send(featuredTests)
+    })
+
+    // recommend api from db
+    app.get('/recommend', async(req, res) => {
+      const result = await recommendCollection.find({}).toArray()
+      res.send(result)
     })
 
 
