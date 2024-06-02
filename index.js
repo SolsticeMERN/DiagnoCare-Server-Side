@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const app = express()
 const cors = require('cors')
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port = process.env.PORT || 3000;
 
@@ -37,6 +38,36 @@ async function run() {
     const usersCollection = client.db("DiagnoCare").collection("users");
 
 
+
+
+    // jwt api
+    app.post('/jwt', async(req, res)=> {
+      const user = req.body
+      const token = jwt.sign(user, process.env.SECRECT_KEY, {
+        expiresIn: "1h"
+      });
+      res.send({token})
+    })
+
+    // middleware
+
+    const verifyToken = (req, res, next) => {
+      console.log('inside verify token', req.headers.authorization);
+      if(!req.headers.authorization){
+        return res.status(401).send({message: "unathorization access"});
+      }
+      const token = req.headers.authorization.split(' ')[1]
+      jwt.verify(token, process.env.SECRECT_KEY, (err, decoded) => {
+        if(err){
+          return res.status(401).send({message: "unathorization access"});
+        }
+        req.decoded = decoded
+        next()
+      })
+     
+    }
+
+
     // save users api
     app.post('/users', async(req, res) => {
       const user = req.body
@@ -57,13 +88,13 @@ async function run() {
     })
 
     // tests api from db
-    app.get('/tests', async(req, res) => {
+    app.get('/tests',  async(req, res) => {
       const result = await testsCollection.find({}).toArray()
       res.send(result)
     })
 
     // features api from db
-    app.get('/featured-tests', async(req, res) => {
+    app.get('/featured-tests', verifyToken,  async(req, res) => {
       const tests= await testsCollection.find({}).toArray()
       tests.sort((a, b) => b.bookings - a.bookings)
       const featuredTests=tests.slice(0,3)
