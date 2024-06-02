@@ -37,10 +37,9 @@ async function run() {
     const usersCollection = client.db("DiagnoCare").collection("users");
 
 
-    // users api
+    // save users api
     app.post('/users', async(req, res) => {
       const user = req.body
-      console.log(user);
       const query = {email: user?.email}
       const userExists = await usersCollection.findOne(query);
       if (userExists) {
