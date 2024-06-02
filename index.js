@@ -84,9 +84,6 @@ async function run() {
       });
     });
 
-
-
-
     // save users api
     app.post("/users", async (req, res) => {
       const user = req.body;
@@ -132,27 +129,39 @@ async function run() {
       const result = await testsCollection.findOne(query);
       res.send(result);
     });
-    
-  //  
 
+    //  booking api from db
+    app.post("/booking", async (req, res) => {
+      const bookingData = req.body;
+      // save booking data
+      const result = await bookingsCollection.insertOne(bookingData);
+      res.send(result);
+    });
 
+    // Endpoint to update slots
+    app.patch("/update-slots/:id", async (req, res) => {
+      const id = req.params.id;
+      const { slots } = req.body;
 
+      try {
+        const query = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            slots: slots,
+          },
+          $inc: { bookings: 1 },
+        };
 
+        const result = await testsCollection.updateOne(query, updateDoc);
+        if (result.matchedCount === 0) {
+          return res.status(404).send({ message: "Booking not found" });
+        }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        res.status(200).send(result);
+      } catch (err) {
+        res.status(500).send({ message: err.message });
+      }
+    });
 
     await client.db("admin").command({ ping: 1 });
     console.log(
