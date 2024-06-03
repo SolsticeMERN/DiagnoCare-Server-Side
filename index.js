@@ -49,6 +49,7 @@ async function run() {
     // JWT API
     app.post("/jwt", async (req, res) => {
       const user = req.body;
+      console.log(user);
       const token = jwt.sign(user, process.env.SECRECT_KEY, {
         expiresIn: "1h",
       });
@@ -61,11 +62,13 @@ async function run() {
         return res.status(401).send({ message: "Unauthorized access" });
       }
       const token = req.headers.authorization.split(" ")[1];
+      console.log(token);
       jwt.verify(token, process.env.SECRECT_KEY, (err, decoded) => {
         if (err) {
           return res.status(401).send({ message: "Unauthorized access" });
         }
         req.decoded = decoded;
+        console.log(req.decoded.email);
         next();
       });
     };
@@ -74,8 +77,10 @@ async function run() {
     const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
       const query = { email: email };
+      console.log(query);
       const user = await usersCollection.findOne(query);
       const isAdmin = user?.role === "admin";
+      console.log(isAdmin);
       if (!isAdmin) {
         return res.status(401).send({ message: "unauthorized access" });
       }
@@ -137,7 +142,7 @@ async function run() {
     });
 
     // Featured tests API from DB
-    app.get("/featured-tests",  async (req, res) => {
+    app.get("/featured-tests",   async (req, res) => {
       const tests = await testsCollection.find({}).toArray();
       tests.sort((a, b) => b.bookings - a.bookings);
       const featuredTests = tests.slice(0, 3);
@@ -151,7 +156,7 @@ async function run() {
     });
 
     // View details API from DB
-    app.get("/testDetails/:id", async (req, res) => {
+    app.get("/testDetails/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await testsCollection.findOne(query);
@@ -159,14 +164,14 @@ async function run() {
     });
 
     // Booking API to save booking data
-    app.post("/booking", verifyToken, async (req, res) => {
+    app.post("/booking", async (req, res) => {
       const bookingData = req.body;
       const result = await bookingsCollection.insertOne(bookingData);
       res.send(result);
     });
 
     // Endpoint to update slots
-    app.patch("/update-slots/:id", async (req, res) => {
+    app.patch("/update-slots/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const { slots } = req.body;
 
@@ -194,7 +199,7 @@ async function run() {
 
 
     // get booking api
-    app.get('/booking', async(req, res)=>{
+    app.get('/booking', verifyToken,  async(req, res)=>{
       const result = await bookingsCollection.find({}).toArray()
       res.send(result)
     })
@@ -214,7 +219,7 @@ async function run() {
   //  admin menu api
 
   // get all the users from db
-  app.get("/users", verifyToken, async (req, res) => {
+  app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
     try {
       const users = await usersCollection.find().toArray();
       res.send(users);
@@ -224,7 +229,7 @@ async function run() {
   });
 
   // User role update API
-app.patch('/roleUpdate/:id', async (req, res) => {
+app.patch('/roleUpdate/:id', verifyToken, async (req, res) => {
   const id = req.params.id;
   const role = req.body;
   const filter = { _id: new ObjectId(id) };
@@ -237,7 +242,7 @@ app.patch('/roleUpdate/:id', async (req, res) => {
 
 
 // user status update api
-app.patch('/statusUpdate/:id', async(req, res)=> {
+app.patch('/statusUpdate/:id', verifyToken, verifyAdmin, async(req, res)=> {
   const id = req.params.id
   const status = req.body
   console.log(status);
