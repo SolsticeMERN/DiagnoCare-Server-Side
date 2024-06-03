@@ -227,15 +227,28 @@ async function run() {
 app.patch('/roleUpdate/:id', async (req, res) => {
   const id = req.params.id;
   const role = req.body;
-  console.log(role);
   const filter = { _id: new ObjectId(id) };
   const updateDoc = {
     $set: role,
   };
   const result = await usersCollection.updateOne(filter, updateDoc);
+  res.send(result);
+})
+
+
+// user status update api
+app.patch('/statusUpdate/:id', async(req, res)=> {
+  const id = req.params.id
+  const status = req.body
+  console.log(status);
+  const filter = { _id: new ObjectId(id) };
+  const updateDoc = {
+    $set: status,
+  };
+  const result = await usersCollection.updateOne(filter, updateDoc);
   console.log(result);
   res.send(result);
-});
+})
 
 
     app.get("/", (req, res) => {
