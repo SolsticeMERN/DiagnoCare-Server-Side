@@ -72,11 +72,11 @@ async function run() {
 
     // middleware admin verify token
     const verifyAdmin = async (req, res, next) => {
-      const user = req.user;
-      const query = { email: user?.email };
-      const result = await usersCollection.findOne(query);
-      console.log(result?.role);
-      if (!result || result?.role !== "admin") {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      const isAdmin = user?.role === "admin";
+      if (!isAdmin) {
         return res.status(401).send({ message: "unauthorized access" });
       }
       next();
@@ -192,8 +192,6 @@ async function run() {
 
     });
 
-    
-
 
     // get booking api
     app.get('/booking', async(req, res)=>{
@@ -216,7 +214,7 @@ async function run() {
   //  admin menu api
 
   // get all the users from db
-  app.get("/users", async (req, res) => {
+  app.get("/users", verifyToken, async (req, res) => {
     try {
       const users = await usersCollection.find().toArray();
       res.send(users);
@@ -225,20 +223,20 @@ async function run() {
     }
   });
 
+  // User role update API
+app.patch('/roleUpdate/:id', async (req, res) => {
+  const id = req.params.id;
+  const role = req.body;
+  console.log(role);
+  const filter = { _id: new ObjectId(id) };
+  const updateDoc = {
+    $set: role,
+  };
+  const result = await usersCollection.updateOne(filter, updateDoc);
+  console.log(result);
+  res.send(result);
+});
 
-
-
-
-
-
-
-
-
-
-
-
-
-    
 
     app.get("/", (req, res) => {
       res.send("DiagnoCare Server is running");
