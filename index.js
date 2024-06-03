@@ -22,7 +22,9 @@ app.use(
 );
 app.use(express.json());
 
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.0rmazcr.mongodb.net/?retryWrites=true&w=majority`;
+
+
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.0rmazcr.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -35,7 +37,7 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
     console.log("Connected to MongoDB");
 
     const bannerCollection = client.db("DiagnoCare").collection("banner");
@@ -66,6 +68,18 @@ async function run() {
         req.decoded = decoded;
         next();
       });
+    };
+
+    // middleware admin verify token
+    const verifyAdmin = async (req, res, next) => {
+      const user = req.user;
+      const query = { email: user?.email };
+      const result = await usersCollection.findOne(query);
+      console.log(result?.role);
+      if (!result || result?.role !== "admin") {
+        return res.status(401).send({ message: "unauthorized access" });
+      }
+      next();
     };
 
     // Stripe payment API
@@ -101,6 +115,15 @@ async function run() {
       res.send(result);
     });
 
+
+    // user get api
+    app.get("/user/:email", async (req, res) => {
+      const email = req.params.email;
+      const user = await usersCollection.findOne({ email });
+      res.send(user);
+    });
+
+
     // Banner API from DB
     app.get("/banner", async (req, res) => {
       const result = await bannerCollection.find({}).toArray();
@@ -114,7 +137,7 @@ async function run() {
     });
 
     // Featured tests API from DB
-    app.get("/featured-tests", verifyToken, async (req, res) => {
+    app.get("/featured-tests",  async (req, res) => {
       const tests = await testsCollection.find({}).toArray();
       tests.sort((a, b) => b.bookings - a.bookings);
       const featuredTests = tests.slice(0, 3);
@@ -165,7 +188,57 @@ async function run() {
       } catch (err) {
         res.status(500).send({ message: err.message });
       }
+
+
     });
+
+    
+
+
+    // get booking api
+    app.get('/booking', async(req, res)=>{
+      const result = await bookingsCollection.find({}).toArray()
+      res.send(result)
+    })
+
+    // booking room cancel
+    app.delete("/booking-room/:id", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      try {
+        const result = await bookingsCollection.deleteOne(query);
+        res.send(result);
+      } catch (err) {
+        res.status(500).send(err);
+      }
+    });
+
+  //  admin menu api
+
+  // get all the users from db
+  app.get("/users", async (req, res) => {
+    try {
+      const users = await usersCollection.find().toArray();
+      res.send(users);
+    } catch (err) {
+      res.status(500).send(err);
+    }
+  });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
 
     app.get("/", (req, res) => {
       res.send("DiagnoCare Server is running");
