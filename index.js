@@ -22,8 +22,6 @@ app.use(
 );
 app.use(express.json());
 
-
-
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.0rmazcr.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -120,14 +118,12 @@ async function run() {
       res.send(result);
     });
 
-
     // user get api
     app.get("/user/:email", async (req, res) => {
       const email = req.params.email;
       const user = await usersCollection.findOne({ email });
       res.send(user);
     });
-
 
     // Banner API from DB
     app.get("/banner", async (req, res) => {
@@ -147,10 +143,44 @@ async function run() {
       res.send(result);
     });
 
+    // test delete from db
+    app.delete("/test/:id", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      try {
+        const result = await testsCollection.deleteOne(query);
+        res.send(result);
+      } catch (err) {
+        res.status(500).send(err);
+      }
+    });
 
+    // test to update in db
+    app.patch("/update-test/:id", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const updateInfo = req.body;
+
+      try {
+        const query = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            ...updateInfo,
+          },
+        };
+
+        const result = await testsCollection.updateOne(query, updateDoc);
+        if (result.matchedCount === 0) {
+          return res.status(404).send({ message: "Update not found" });
+        }
+
+        res.status(200).send(result);
+      } catch (err) {
+        res.status(500).send({ message: err.message });
+      }
+    });
 
     // Featured tests API from DB
-    app.get("/featured-tests",   async (req, res) => {
+    app.get("/featured-tests", async (req, res) => {
       const tests = await testsCollection.find({}).toArray();
       tests.sort((a, b) => b.bookings - a.bookings);
       const featuredTests = tests.slice(0, 3);
@@ -164,7 +194,7 @@ async function run() {
     });
 
     // View details API from DB
-    app.get("/testDetails/:id",  async (req, res) => {
+    app.get("/testDetails/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await testsCollection.findOne(query);
@@ -201,18 +231,15 @@ async function run() {
       } catch (err) {
         res.status(500).send({ message: err.message });
       }
-
-
     });
 
-
     // get booking api
-    app.get('/booking/:email', async(req, res)=>{
-      const email = req.params.email
-      const query = {email: email}
-      const result = await bookingsCollection.find(query).toArray()
-      res.send(result)
-    })
+    app.get("/booking/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const result = await bookingsCollection.find(query).toArray();
+      res.send(result);
+    });
 
     // booking room cancel
     app.delete("/booking-room/:id", verifyToken, async (req, res) => {
@@ -226,45 +253,48 @@ async function run() {
       }
     });
 
-  //  admin menu api
+    //  admin menu api
 
-  // get all the users from db
-  app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
-    try {
-      const users = await usersCollection.find().toArray();
-      res.send(users);
-    } catch (err) {
-      res.status(500).send(err);
-    }
-  });
+    // get all the users from db
+    app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
+      try {
+        const users = await usersCollection.find().toArray();
+        res.send(users);
+      } catch (err) {
+        res.status(500).send(err);
+      }
+    });
 
-  // User role update API
-app.patch('/roleUpdate/:id', verifyToken, async (req, res) => {
-  const id = req.params.id;
-  const role = req.body;
-  const filter = { _id: new ObjectId(id) };
-  const updateDoc = {
-    $set: role,
-  };
-  const result = await usersCollection.updateOne(filter, updateDoc);
-  res.send(result);
-})
+    // User role update API
+    app.patch("/roleUpdate/:id", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const role = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: role,
+      };
+      const result = await usersCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
 
-
-// user status update api
-app.patch('/statusUpdate/:id', verifyToken, verifyAdmin, async(req, res)=> {
-  const id = req.params.id
-  const status = req.body
-  console.log(status);
-  const filter = { _id: new ObjectId(id) };
-  const updateDoc = {
-    $set: status,
-  };
-  const result = await usersCollection.updateOne(filter, updateDoc);
-  console.log(result);
-  res.send(result);
-})
-
+    // user status update api
+    app.patch(
+      "/statusUpdate/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const status = req.body;
+        console.log(status);
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: status,
+        };
+        const result = await usersCollection.updateOne(filter, updateDoc);
+        console.log(result);
+        res.send(result);
+      }
+    );
 
     app.get("/", (req, res) => {
       res.send("DiagnoCare Server is running");
