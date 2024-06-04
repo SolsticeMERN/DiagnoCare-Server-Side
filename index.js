@@ -135,11 +135,19 @@ async function run() {
       res.send(result);
     });
 
-    // Tests API from DB
+    // get Tests API from DB
     app.get("/tests", async (req, res) => {
       const result = await testsCollection.find({}).toArray();
       res.send(result);
     });
+    // Post Tests API from DB
+    app.post("/tests", async (req, res) => {
+      const bookingData = req.body;
+      const result = await testsCollection.insertOne(bookingData);
+      res.send(result);
+    });
+
+
 
     // Featured tests API from DB
     app.get("/featured-tests",   async (req, res) => {
@@ -156,7 +164,7 @@ async function run() {
     });
 
     // View details API from DB
-    app.get("/testDetails/:id", verifyToken, async (req, res) => {
+    app.get("/testDetails/:id",  async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await testsCollection.findOne(query);
@@ -199,8 +207,10 @@ async function run() {
 
 
     // get booking api
-    app.get('/booking', verifyToken,  async(req, res)=>{
-      const result = await bookingsCollection.find({}).toArray()
+    app.get('/booking/:email', async(req, res)=>{
+      const email = req.params.email
+      const query = {email: email}
+      const result = await bookingsCollection.find(query).toArray()
       res.send(result)
     })
 
