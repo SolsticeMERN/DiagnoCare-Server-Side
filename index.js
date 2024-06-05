@@ -241,6 +241,14 @@ async function run() {
       res.send(result);
     });
 
+    // get bookings by bookingId
+    app.get("/bookings/test/:bookingId", async (req, res) => {
+      const bookingId = req.params.bookingId;
+      const query = { bookingId: bookingId };
+      const result = await bookingsCollection.find(query).toArray();
+      res.send(result);
+    });
+
     // booking room cancel
     app.delete("/booking-room/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
