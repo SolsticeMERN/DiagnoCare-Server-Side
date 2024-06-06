@@ -131,6 +131,25 @@ async function run() {
       res.send(result);
     });
 
+    // user status update api
+    app.patch(
+      "/bannerUpdate/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const status = req.body;
+        console.log(status);
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: status,
+        };
+        const result = await bannerCollection.updateOne(filter, updateDoc);
+        console.log(result);
+        res.send(result);
+      }
+    );
+
     // get Tests API from DB
     app.get("/tests", async (req, res) => {
       const result = await testsCollection.find({}).toArray();
