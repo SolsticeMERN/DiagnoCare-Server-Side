@@ -86,7 +86,7 @@ async function run() {
     };
 
     // Stripe payment API
-    app.post("/create-payment-intent", async (req, res) => {
+    app.post("/create-payment-intent", verifyToken, async (req, res) => {
       const { price } = req.body;
       const amount = Math.round(price * 100);
 
@@ -119,7 +119,7 @@ async function run() {
     });
 
     // user get api
-    app.get("/user/:email", async (req, res) => {
+    app.get("/user/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const user = await usersCollection.findOne({ email });
       res.send(user);
@@ -132,10 +132,10 @@ async function run() {
     });
 
     // post Banner API from DB
-    app.post("/banner", async (req, res) => {
-      const bannerInfo = req.body
+    app.post("/banner", verifyToken, verifyAdmin, async (req, res) => {
+      const bannerInfo = req.body;
       console.log(bannerInfo);
-      const result = await bannerCollection.insertOne(bannerInfo)
+      const result = await bannerCollection.insertOne(bannerInfo);
       res.send(result);
     });
 
@@ -165,14 +165,14 @@ async function run() {
     });
 
     // Post Tests API from DB
-    app.post("/tests", async (req, res) => {
+    app.post("/tests", verifyToken, verifyAdmin, async (req, res) => {
       const bookingData = req.body;
       const result = await testsCollection.insertOne(bookingData);
       res.send(result);
     });
 
     // test delete from db
-    app.delete("/test/:id", verifyToken, async (req, res) => {
+    app.delete("/test/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       try {
@@ -184,28 +184,33 @@ async function run() {
     });
 
     // test to update in db
-    app.patch("/update-test/:id", verifyToken, async (req, res) => {
-      const id = req.params.id;
-      const updateInfo = req.body;
+    app.patch(
+      "/update-test/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const updateInfo = req.body;
 
-      try {
-        const query = { _id: new ObjectId(id) };
-        const updateDoc = {
-          $set: {
-            ...updateInfo,
-          },
-        };
+        try {
+          const query = { _id: new ObjectId(id) };
+          const updateDoc = {
+            $set: {
+              ...updateInfo,
+            },
+          };
 
-        const result = await testsCollection.updateOne(query, updateDoc);
-        if (result.matchedCount === 0) {
-          return res.status(404).send({ message: "Update not found" });
+          const result = await testsCollection.updateOne(query, updateDoc);
+          if (result.matchedCount === 0) {
+            return res.status(404).send({ message: "Update not found" });
+          }
+
+          res.status(200).send(result);
+        } catch (err) {
+          res.status(500).send({ message: err.message });
         }
-
-        res.status(200).send(result);
-      } catch (err) {
-        res.status(500).send({ message: err.message });
       }
-    });
+    );
 
     // Featured tests API from DB
     app.get("/featured-tests", async (req, res) => {
@@ -216,7 +221,7 @@ async function run() {
     });
 
     // Recommend API from DB
-    app.get("/recommend", verifyToken, async (req, res) => {
+    app.get("/recommend", async (req, res) => {
       const result = await recommendCollection.find({}).toArray();
       res.send(result);
     });
@@ -261,16 +266,33 @@ async function run() {
       }
     });
 
-     // get reservation api
-     app.get("/reservation", verifyToken, verifyAdmin, async (req, res) => {
-      const result = await bookingsCollection.find({}).toArray();
-      res.send(result);
+    // get reservation api
+    app.get("/reservation", verifyToken, verifyAdmin, async (req, res) => {
+      const { email, page = 1, limit = 3 } = req.query;
+
+      const query = {};
+      if (email) {
+        query.email = { $regex: email, $options: "i" };
+      }
+
+      const options = {
+        skip: (page - 1) * limit,
+        limit: parseInt(limit),
+      };
+
+      try {
+        const reservations = await bookingsCollection
+          .find(query, options)
+          .toArray();
+        const total = await bookingsCollection.countDocuments(query);
+        res.send({ reservations, total, page, limit });
+      } catch (error) {
+        res.status(500).send({ error: error.message });
+      }
     });
 
-
-
     // get booking api
-    app.get("/booking/:email", async (req, res) => {
+    app.get("/booking/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
       const result = await bookingsCollection.find(query).toArray();
@@ -278,12 +300,17 @@ async function run() {
     });
 
     // get bookings by bookingId
-    app.get("/bookings/test/:bookingId", verifyToken, verifyAdmin, async (req, res) => {
-      const bookingId = req.params.bookingId;
-      const query = { bookingId: bookingId };
-      const result = await bookingsCollection.find(query).toArray();
-      res.send(result);
-    });
+    app.get(
+      "/bookings/test/:bookingId",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const bookingId = req.params.bookingId;
+        const query = { bookingId: bookingId };
+        const result = await bookingsCollection.find(query).toArray();
+        res.send(result);
+      }
+    );
 
     // booking room cancel
     app.delete("/booking-test/:id", verifyToken, async (req, res) => {
@@ -296,7 +323,6 @@ async function run() {
         res.status(500).send(err);
       }
     });
-
 
     //  admin menu api
 
@@ -341,8 +367,12 @@ async function run() {
       }
     );
 
-      // delete reservation room cancel
-      app.delete("/booking-reservation/:id", verifyToken, verifyAdmin, async (req, res) => {
+    // delete reservation room cancel
+    app.delete(
+      "/booking-reservation/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
         const id = req.params.id;
         const query = { _id: new ObjectId(id) };
         try {
@@ -351,7 +381,11 @@ async function run() {
         } catch (err) {
           res.status(500).send(err);
         }
-      });
+      }
+    );
+
+
+    
 
     app.get("/", (req, res) => {
       res.send("DiagnoCare Server is running");
