@@ -125,9 +125,17 @@ async function run() {
       res.send(user);
     });
 
-    // Banner API from DB
+    // get Banner API from DB
     app.get("/banner", async (req, res) => {
       const result = await bannerCollection.find({}).toArray();
+      res.send(result);
+    });
+
+    // post Banner API from DB
+    app.post("/banner", async (req, res) => {
+      const bannerInfo = req.body
+      console.log(bannerInfo);
+      const result = await bannerCollection.insertOne(bannerInfo)
       res.send(result);
     });
 
@@ -155,6 +163,7 @@ async function run() {
       const result = await testsCollection.find({}).toArray();
       res.send(result);
     });
+
     // Post Tests API from DB
     app.post("/tests", async (req, res) => {
       const bookingData = req.body;
