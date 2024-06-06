@@ -216,13 +216,13 @@ async function run() {
     });
 
     // Recommend API from DB
-    app.get("/recommend", async (req, res) => {
+    app.get("/recommend", verifyToken, async (req, res) => {
       const result = await recommendCollection.find({}).toArray();
       res.send(result);
     });
 
     // View details API from DB
-    app.get("/testDetails/:id", async (req, res) => {
+    app.get("/testDetails/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await testsCollection.findOne(query);
@@ -230,7 +230,7 @@ async function run() {
     });
 
     // Booking API to save booking data
-    app.post("/booking", async (req, res) => {
+    app.post("/booking", verifyToken, async (req, res) => {
       const bookingData = req.body;
       const result = await bookingsCollection.insertOne(bookingData);
       res.send(result);
@@ -261,6 +261,14 @@ async function run() {
       }
     });
 
+     // get reservation api
+     app.get("/reservation", verifyToken, verifyAdmin, async (req, res) => {
+      const result = await bookingsCollection.find({}).toArray();
+      res.send(result);
+    });
+
+
+
     // get booking api
     app.get("/booking/:email", async (req, res) => {
       const email = req.params.email;
@@ -270,7 +278,7 @@ async function run() {
     });
 
     // get bookings by bookingId
-    app.get("/bookings/test/:bookingId", async (req, res) => {
+    app.get("/bookings/test/:bookingId", verifyToken, verifyAdmin, async (req, res) => {
       const bookingId = req.params.bookingId;
       const query = { bookingId: bookingId };
       const result = await bookingsCollection.find(query).toArray();
@@ -278,7 +286,7 @@ async function run() {
     });
 
     // booking room cancel
-    app.delete("/booking-room/:id", verifyToken, async (req, res) => {
+    app.delete("/booking-test/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       try {
@@ -288,6 +296,7 @@ async function run() {
         res.status(500).send(err);
       }
     });
+
 
     //  admin menu api
 
@@ -302,7 +311,7 @@ async function run() {
     });
 
     // User role update API
-    app.patch("/roleUpdate/:id", verifyToken, async (req, res) => {
+    app.patch("/roleUpdate/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const role = req.body;
       const filter = { _id: new ObjectId(id) };
@@ -331,6 +340,18 @@ async function run() {
         res.send(result);
       }
     );
+
+      // delete reservation room cancel
+      app.delete("/booking-reservation/:id", verifyToken, verifyAdmin, async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        try {
+          const result = await bookingsCollection.deleteOne(query);
+          res.send(result);
+        } catch (err) {
+          res.status(500).send(err);
+        }
+      });
 
     app.get("/", (req, res) => {
       res.send("DiagnoCare Server is running");
