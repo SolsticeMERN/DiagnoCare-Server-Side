@@ -9,7 +9,6 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const port = process.env.PORT || 3000;
 
-
 // middleware
 app.use(
   cors({
@@ -22,7 +21,6 @@ app.use(
   })
 );
 app.use(express.json());
-
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.0rmazcr.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -45,14 +43,10 @@ async function run() {
     const recommendCollection = client.db("DiagnoCare").collection("recommend");
     const usersCollection = client.db("DiagnoCare").collection("users");
     const bookingsCollection = client.db("DiagnoCare").collection("bookings");
-    const testResultsCollection = client
-      .db("DiagnoCare")
-      .collection("testResults");
 
     // JWT API
     app.post("/jwt", async (req, res) => {
       const user = req.body;
-      console.log(user);
       const token = jwt.sign(user, process.env.SECRECT_KEY, {
         expiresIn: "1h",
       });
@@ -65,7 +59,6 @@ async function run() {
         return res.status(401).send({ message: "Unauthorized access" });
       }
       const token = req.headers.authorization.split(" ")[1];
-      console.log(token);
       jwt.verify(token, process.env.SECRECT_KEY, (err, decoded) => {
         if (err) {
           return res.status(401).send({ message: "Unauthorized access" });
@@ -80,7 +73,6 @@ async function run() {
     const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
       const query = { email: email };
-      console.log(query);
       const user = await usersCollection.findOne(query);
       const isAdmin = user?.role === "admin";
       console.log(isAdmin);
@@ -139,7 +131,6 @@ async function run() {
     // post Banner API from DB
     app.post("/banner", verifyToken, verifyAdmin, async (req, res) => {
       const bannerInfo = req.body;
-      console.log(bannerInfo);
       const result = await bannerCollection.insertOne(bannerInfo);
       res.send(result);
     });
@@ -152,7 +143,6 @@ async function run() {
       async (req, res) => {
         const id = req.params.id;
         const status = req.body;
-        console.log(status);
         const filter = { _id: new ObjectId(id) };
         const updateDoc = {
           $set: status,
@@ -361,7 +351,6 @@ async function run() {
       async (req, res) => {
         const id = req.params.id;
         const status = req.body;
-        console.log(status);
         const filter = { _id: new ObjectId(id) };
         const updateDoc = {
           $set: status,
@@ -389,13 +378,103 @@ async function run() {
       }
     );
 
-    // test result submit api
+    // admin stats from api
+    app.get("/admin-stats", verifyToken, verifyAdmin, async (req, res) => {
+      const users = await usersCollection.estimatedDocumentCount();
+      const booking = await bookingsCollection.estimatedDocumentCount();
+      const tests = await testsCollection.estimatedDocumentCount();
 
-    app.post("/result", verifyToken, verifyAdmin, async (req, res) => {
-      const testResult = req.body;
-      const result = await testResultsCollection.insertOne(testResult);
+      const result = await bookingsCollection
+        .aggregate([
+          {
+            $group: {
+              _id: null,
+              totalRevenue: {
+                $sum: "$amountPaid",
+              },
+            },
+          },
+        ])
+        .toArray();
+      const revenue = result.length > 0 ? result[0].totalRevenue : 0;
+
+      res.send({
+        users,
+        booking,
+        tests,
+        revenue,
+      });
+    });
+
+    // get all booking api
+    app.get("/booking", verifyToken, async (req, res) => {
+      const pipeline = [
+        {
+          $group: {
+            _id: "$title",
+            reports: { $push: "$reportStatus" },
+            totalRevenue: { $sum: "$amountPaid" },
+          },
+        },
+      ];
+      const result = await bookingsCollection.aggregate(pipeline).toArray();
       res.send(result);
     });
+
+    // get all booking api
+    app.get("/delivery-ratio", verifyToken, async (req, res) => {
+      const pipeline = [
+        {
+          $group: {
+            _id: "$reportStatus",
+            count: { $sum: 1 },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            reportStatus: "$_id",
+            count: 1,
+          },
+        },
+      ];
+      const result = await bookingsCollection.aggregate(pipeline).toArray();
+      res.send(result);
+    });
+
+    app.patch("/booking/:id", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const testResult = req.body;
+
+      const { _id, ...updateFields } = testResult;
+    
+      const updateDoc = {
+        $set: {
+          ...updateFields
+        }
+      };
+    
+      try {
+        const result = await bookingsCollection.updateOne(query, updateDoc);
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
+
+    // Fetch delivered test results for a specific user
+    app.get('/test-results', verifyToken, async(req, res) => {
+      const email = req.decoded.email
+      const result = await bookingsCollection.find({ email, reportStatus: "delivered" }).toArray();
+      res.send(result)
+    })
+
+
+
+
+
 
     app.get("/", (req, res) => {
       res.send("DiagnoCare Server is running");
