@@ -43,6 +43,7 @@ async function run() {
     const recommendCollection = client.db("DiagnoCare").collection("recommend");
     const usersCollection = client.db("DiagnoCare").collection("users");
     const bookingsCollection = client.db("DiagnoCare").collection("bookings");
+    const testResultsCollection = client.db("DiagnoCare").collection("testResults");
 
     // JWT API
     app.post("/jwt", async (req, res) => {
@@ -384,6 +385,13 @@ async function run() {
       }
     );
 
+    // test result submit api
+
+    app.post("/result", verifyToken, verifyAdmin, async (req, res) => {
+      const testResult = req.body;
+      const result = await testResultsCollection.insertOne(testResult);
+      res.send(result);
+    });
 
     
 
