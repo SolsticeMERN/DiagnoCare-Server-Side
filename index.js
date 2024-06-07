@@ -9,6 +9,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const port = process.env.PORT || 3000;
 
+
 // middleware
 app.use(
   cors({
@@ -21,6 +22,7 @@ app.use(
   })
 );
 app.use(express.json());
+
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.0rmazcr.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -43,7 +45,9 @@ async function run() {
     const recommendCollection = client.db("DiagnoCare").collection("recommend");
     const usersCollection = client.db("DiagnoCare").collection("users");
     const bookingsCollection = client.db("DiagnoCare").collection("bookings");
-    const testResultsCollection = client.db("DiagnoCare").collection("testResults");
+    const testResultsCollection = client
+      .db("DiagnoCare")
+      .collection("testResults");
 
     // JWT API
     app.post("/jwt", async (req, res) => {
@@ -392,8 +396,6 @@ async function run() {
       const result = await testResultsCollection.insertOne(testResult);
       res.send(result);
     });
-
-    
 
     app.get("/", (req, res) => {
       res.send("DiagnoCare Server is running");
